@@ -23,7 +23,7 @@ use Cwd qw(abs_path);
 use FindBin;
 use lib abs_path("$FindBin::Bin/../lib");
 
-require "mutationVDJSwitchHelper.pl";
+require "SHMSangerHelper.pl";
 require "pslHelper.pl";
 
 
@@ -296,6 +296,11 @@ sub create_summary {
   mkdir "$outdir/group_viz";
   my $viz_cmd = "Rscript $FindBin::Bin/../R/mutationVizGrouped.R $meta_file $mutfile $clonefile $refdir $outdir/group_viz/";
   System("$viz_cmd > $outdir/group_viz/R.out 2>&1");
+
+  my $stat_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/GroupStats.txt";
+  System("$stat_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $shm_stat_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/SHMGroupStats.txt";
+  System("$shm_stat_cmd >> $outdir/group_viz/R.out 2>&1");
 }
 
 sub process_experiment ($$) {
@@ -536,31 +541,6 @@ $arg{"--minqual","Minimum quality to accept mutation",$min_qual}
 $arg{"--ow","Overwrite output files if they already exist"}
 $arg{"--help","This helpful help screen."}
 
-Meta file format
-----------------
-The meta file must be a simple tab-delimited text file with the following headers:
-
-experiment mid reference bindstart bindend cutstart cutend
-
-Here is the text from a sample meta file ODB_meta.txt:
-
-experiment         mid         reference  bindstart  bindend  cutstart  cutend
-TALEN2_SCID058-IT  AGCACTGTAG  TALEN2.fa  74         123      92        107
-TALEN2_neg_ctrl    ATCAGACACG  TALEN2.fa  74         123      92        107
-TALEN3_SCID058-IT  TCGTCGCTCG  TALEN3.fa  206        255      223       238
-TALEN3_neg_ctrl    ACATACGCGT  TALEN3.fa  206        255      223       238
-TALEN4_SCID058-IT  CATAGTAGTG  TALEN4.fa  237        287      255       270
-TALEN4_neg_ctrl    ATACGACGTA  TALEN4.fa  237        287      255       270
-
-
-Program Description
--------------------
-
-Example Commands
-----------------
-
-1)
-OttDeBruin.pl --metafile ./in/ODB_meta.txt --in ./in/1.TCA.454ReadsLisa1_14_12.fna --outdir ./out/
 
 EOF
 

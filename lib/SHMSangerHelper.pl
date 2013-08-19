@@ -74,7 +74,7 @@ sub read_fasta ($) {
 			last;
 		}
 		chomp($line);
-		croak "Error: unexpected base in sequence $seq_bases" unless $line =~ /^[AGCTagctNnXx\-\.]*$/;
+		croak "Error: unexpected base in sequence $line" unless $seq_bases =~ /^[AGCTagctNnXx\-\.]*$/;
 		$seq_bases .= $line;
 	}
 	
