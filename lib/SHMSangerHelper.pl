@@ -359,7 +359,7 @@ sub parse_smith_water_file ($$$$) {
 	my ($refid,$refseq) = read_fasta($reffh);
 	$reffh->close;
 
-	$statfh->print(join("\t",qw(ID Bp Subs Dels DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
+	$statfh->print(join("\t",qw(ID Bp Subs Dels LargeDels DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
 
 	foreach my $clone (sort keys %q) {
 		my ($bps,$subs,$del,$delbp,$ins,$insbp) = parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual,$expt_hash->{start},$expt_hash->{end});
@@ -368,6 +368,7 @@ sub parse_smith_water_file ($$$$) {
 			$statfh->print(join("\t",$clone,$q{$clone}->{bps},
 																		$q{$clone}->{sub},
 																		$q{$clone}->{del},
+																		$q{$clone}->{largedel},
 																		$q{$clone}->{delbp},
 																		$q{$clone}->{ins},
 																		$q{$clone}->{insbp},
@@ -604,6 +605,7 @@ sub parse_sw_alignment ($$$$) {
 		$q->{sub} = 0;
 		$q->{del} = 0;
 		$q->{delbp} = 0;
+		$q->{largedel} = 0;
 		$q->{ins} = 0;
 		$q->{insbp} = 0;
 
@@ -659,6 +661,7 @@ sub parse_sw_alignment ($$$$) {
 					$fh->print(join("\t",$expt,$clone,$del_tstart,"del","","",$tpos-$del_tstart,$tpos-1)."\n");
 					$q->{del}++;
 					$q->{delbp} += $tpos-$del_tstart;
+					$q->{largedel}++ if $tops-$del_tstart > 10;
 				}
 				next;
 			}

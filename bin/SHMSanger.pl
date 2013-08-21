@@ -195,6 +195,7 @@ sub create_summary {
     while (my $clone = $csv->getline_hr($clonefh)) {
 
       next unless $clone->{Bp} > 0;
+      next if $clone->{LargeDels} > 0 && $clone->{Subs} < 2;
       $stats{$expt}->{Clones}++;
       $stats{$expt}->{Bp} += $clone->{Bp};
       $stats{$expt}->{Subs} += $clone->{Subs};
