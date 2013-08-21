@@ -69,8 +69,10 @@ my $defaultswopt = "-gapopen 13 -gapextend 0.1 -supper1 -supper2 -datafile /usr/
 my $sw_outfmt = "-aformat markx10";
 my $exptfile;
 my $shmexptfile;
+my $delshmexptfile;
 my $clonefile;
 my $shmclonefile;
+my $delshmclonefile;
 my $mutfile;
 #
 # Start of Program
@@ -150,14 +152,18 @@ printf("\nFinished all processes in %.2f seconds.\n", $t1);
 sub create_summary {
 
   my %stats;
-  my $exptfh = IO::File->new(">$exptfile");
-  my $shmexptfh = IO::File->new(">$shmexptfile");
-  my $clonestatsfh = IO::File->new(">$clonefile");
-  my $shmclonestatsfh = IO::File->new(">$shmclonefile");
-  $exptfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $shmexptfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $clonestatsfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
-  $shmclonestatsfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  my $exptsfh = IO::File->new(">$exptfile");
+  my $shmexptsfh = IO::File->new(">$shmexptfile");
+  my $delshmexptsfh = IO::File->new(">$delshmexptfile");
+  my $clonesfh = IO::File->new(">$clonefile");
+  my $shmclonesfh = IO::File->new(">$shmclonefile");
+  my $delshmclonesfh = IO::File->new(">$delshmclonefile");
+  $exptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $shmexptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $delshmexptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $clonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $shmclonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $delshmclonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
 
 
   foreach my $expt (sort keys %meta_hash) {
@@ -192,6 +198,19 @@ sub create_summary {
     $stats{$expt}->{SHMRefT} = 0;
     $stats{$expt}->{SHMRefN} = 0;
 
+    $stats{$expt}->{DelSHMClones} = 0;
+    $stats{$expt}->{DelSHMBp} = 0;
+    $stats{$expt}->{DelSHMSubs} = 0;
+    $stats{$expt}->{DelSHMDel} = 0;
+    $stats{$expt}->{DelSHMDelBp} = 0;
+    $stats{$expt}->{DelSHMIns} = 0;
+    $stats{$expt}->{DelSHMInsBp} = 0;
+    $stats{$expt}->{DelSHMRefA} = 0;
+    $stats{$expt}->{DelSHMRefC} = 0;
+    $stats{$expt}->{DelSHMRefG} = 0;
+    $stats{$expt}->{DelSHMRefT} = 0;
+    $stats{$expt}->{DelSHMRefN} = 0;
+
     while (my $clone = $csv->getline_hr($clonefh)) {
 
       next unless $clone->{Bp} > 0;
@@ -209,7 +228,7 @@ sub create_summary {
       $stats{$expt}->{RefT} += $clone->{RefT};
       $stats{$expt}->{RefN} += $clone->{RefN};
 
-      $clonestatsfh->print(join("\t",$expt,
+      $clonesfh->print(join("\t",$expt,
                                 $clone->{ID},
                                 $clone->{Bp},
                                 $clone->{Subs},
@@ -238,7 +257,7 @@ sub create_summary {
       $stats{$expt}->{SHMRefT} += $clone->{RefT};
       $stats{$expt}->{SHMRefN} += $clone->{RefN};
 
-      $shmclonestatsfh->print(join("\t",$expt,
+      $shmclonesfh->print(join("\t",$expt,
                                 $clone->{ID},
                                 $clone->{Bp},
                                 $clone->{Subs},
@@ -252,6 +271,36 @@ sub create_summary {
                                 $clone->{RefT},
                                 $clone->{RefN},
                                 $clone->{Coords})."\n");
+
+      next unless $clone->{DelBp} > 0;
+      $stats{$expt}->{DelSHMClones}++;
+      $stats{$expt}->{DelSHMBp} += $clone->{Bp};
+      $stats{$expt}->{DelSHMSubs} += $clone->{Subs};
+      $stats{$expt}->{DelSHMDel} += $clone->{Dels};
+      $stats{$expt}->{DelSHMDelBp} += $clone->{DelBp};
+      $stats{$expt}->{DelSHMIns} += $clone->{Ins};
+      $stats{$expt}->{DelSHMInsBp} += $clone->{InsBp};
+      $stats{$expt}->{DelSHMRefA} += $clone->{RefA};
+      $stats{$expt}->{DelSHMRefC} += $clone->{RefC};
+      $stats{$expt}->{DelSHMRefG} += $clone->{RefG};
+      $stats{$expt}->{DelSHMRefT} += $clone->{RefT};
+      $stats{$expt}->{DelSHMRefN} += $clone->{RefN};
+
+      $delshmclonesfh->print(join("\t",$expt,
+                                $clone->{ID},
+                                $clone->{Bp},
+                                $clone->{Subs},
+                                $clone->{Dels},
+                                $clone->{DelBp},
+                                $clone->{Ins},
+                                $clone->{InsBp},
+                                $clone->{RefA},
+                                $clone->{RefC},
+                                $clone->{RefG},
+                                $clone->{RefT},
+                                $clone->{RefN},
+                                $clone->{Coords})."\n");
+
     }
 
     $clonefh->close;
@@ -259,7 +308,7 @@ sub create_summary {
     my $mutrate = $stats{$expt}->{Bp} - $stats{$expt}->{DelBp} > 0 ? $stats{$expt}->{Subs}/($stats{$expt}->{Bp} - $stats{$expt}->{DelBp}) : "";
     my $shmmutrate = $stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp} > 0 ? $stats{$expt}->{SHMSubs}/($stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp}) : "";
 
-    $exptfh->print(join("\t",$expt,$stats{$expt}->{Clones},
+    $exptsfh->print(join("\t",$expt,$stats{$expt}->{Clones},
                                   $stats{$expt}->{Bp},
                                   $stats{$expt}->{Subs},
                                   $stats{$expt}->{Del},                                  
@@ -272,7 +321,7 @@ sub create_summary {
                                   $stats{$expt}->{RefT},
                                   $stats{$expt}->{RefN})."\n");
 
-    $shmexptfh->print(join("\t",$expt,$stats{$expt}->{SHMClones},
+    $shmexptsfh->print(join("\t",$expt,$stats{$expt}->{SHMClones},
                                   $stats{$expt}->{SHMBp},
                                   $stats{$expt}->{SHMSubs},
                                   $stats{$expt}->{SHMDel},                                  
@@ -285,23 +334,49 @@ sub create_summary {
                                   $stats{$expt}->{SHMRefT},
                                   $stats{$expt}->{SHMRefN})."\n");
 
+    $delshmexptsfh->print(join("\t",$expt,$stats{$expt}->{DelSHMClones},
+                                  $stats{$expt}->{DelSHMBp},
+                                  $stats{$expt}->{DelSHMSubs},
+                                  $stats{$expt}->{DelSHMDel},                                  
+                                  $stats{$expt}->{DelSHMDelBp},
+                                  $stats{$expt}->{DelSHMIns},
+                                  $stats{$expt}->{DelSHMInsBp},                                  
+                                  $stats{$expt}->{DelSHMRefA},
+                                  $stats{$expt}->{DelSHMRefC},
+                                  $stats{$expt}->{DelSHMRefG},
+                                  $stats{$expt}->{DelSHMRefT},
+                                  $stats{$expt}->{DelSHMRefN})."\n");
+
     
   }
 
-  $exptfh->close;
-  $shmexptfh->close;
-  $clonestatsfh->close;
-  $shmclonestatsfh->close;
-  System("cat $outdir/*/*_muts.txt > $mutfile");
+  $exptsfh->close;
+  $shmexptsfh->close;
+  $delshmexptsfh->close;
+  $clonesfh->close;
+  $shmclonesfh->close;
+  $delshmclonesfh->close;
+  System("cat $outdir/experiments/*/*_muts.txt > $mutfile");
 
   mkdir "$outdir/group_viz";
   my $viz_cmd = "Rscript $FindBin::Bin/../R/mutationVizGrouped.R $meta_file $mutfile $clonefile $refdir $outdir/group_viz/";
   System("$viz_cmd > $outdir/group_viz/R.out 2>&1");
 
-  my $stat_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/GroupStats.txt";
-  System("$stat_cmd >> $outdir/group_viz/R.out 2>&1");
-  my $shm_stat_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/SHMGroupStats.txt";
-  System("$shm_stat_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Group.txt grouping=\"genotype,allele,tissue,pna\"";
+  System("$group_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $shm_group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/GroupSHM.txt grouping=\"genotype,allele,tissue,pna\"";
+  System("$shm_group_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $del_shm_group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $delshmexptfile $delshmclonefile $meta_file $outdir/GroupSHMDel.txt grouping=\"genotype,allele,tissue,pna\"";
+  System("$del_shm_group_cmd >> $outdir/group_viz/R.out 2>&1");
+
+
+
+  my $mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Mouse.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
+  System("$mouse_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $shm_mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/MouseSHM.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
+  System("$shm_mouse_cmd >> $outdir/group_viz/R.out 2>&1");
+  my $del_shm_mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $delshmexptfile $delshmclonefile $meta_file $outdir/MouseSHMDel.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
+  System("$del_shm_mouse_cmd >> $outdir/group_viz/R.out 2>&1");
 }
 
 sub process_experiment ($$) {
@@ -410,11 +485,11 @@ sub check_existance_of_files {
 	}
 	
 	print "Done.\n";
-
+  mkdir "$outdir/experiments";
 	print "\nChecking on output files...\n";
 	foreach my $expt_id (sort keys %meta_hash) {
-    my $exptdir = $outdir."/$expt_id/";
-    $meta_hash{$expt_id}->{exptdir} = $outdir."/$expt_id";
+    my $exptdir = "$outdir/experiments/$expt_id/";
+    $meta_hash{$expt_id}->{exptdir} = $exptdir;
     mkdir $meta_hash{$expt_id}->{exptdir};
 		my $file = $exptdir."/".$expt_id."_muts.txt";
     my $stats = $exptdir."/".$expt_id."_clones.txt";
@@ -427,11 +502,13 @@ sub check_existance_of_files {
     $meta_hash{$expt_id}->{base_ex} = $base_ex;
 
 	}
-	$exptfile = "$outdir/ExptStats.txt";
-  $shmexptfile = "$outdir/SHMExptStats.txt";
-  $clonefile = "$outdir/CloneStats.txt";
-  $shmclonefile = "$outdir/SHMCloneStats.txt";
-  $mutfile = "$outdir/MutFile.txt";
+	$exptfile = "$outdir/Expts.txt";
+  $shmexptfile = "$outdir/ExptsSHM.txt";
+  $delshmexptfile = "$outdir/ExptsSHMDel.txt";
+  $clonefile = "$outdir/Clones.txt";
+  $shmclonefile = "$outdir/ClonesSHM.txt";
+  $delshmclonefile = "$outdir/ClonesSHMDel.txt";
+  $mutfile = "$outdir/Mutations.txt";
 	croak "Error: Output file $exptfile already exists and overwrite switch --ow not set" if (-r $exptfile && ! defined $ow);
 	System("touch $exptfile",1);
 	croak "Error: Cannot write to $exptfile" unless (-w $exptfile);

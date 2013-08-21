@@ -390,7 +390,7 @@ sub parse_smith_water_file ($$$$) {
 			$bxfh->print("\n");
 
 		} else {
-			$statfh->print(join("\t", $clone, 0,"","","","","","","","","","","","bad alignment")."\n");
+			$statfh->print(join("\t", $clone, 0,"","","","","","","","","","","","","bad alignment")."\n");
 		}
 	}
 
@@ -661,7 +661,7 @@ sub parse_sw_alignment ($$$$) {
 					$fh->print(join("\t",$expt,$clone,$del_tstart,"del","","",$tpos-$del_tstart,$tpos-1)."\n");
 					$q->{del}++;
 					$q->{delbp} += $tpos-$del_tstart;
-					$q->{largedel}++ if $tops-$del_tstart > 10;
+					$q->{largedel}++ if $tpos-$del_tstart > 10;
 				}
 				next;
 			}
