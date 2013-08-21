@@ -362,7 +362,7 @@ sub parse_smith_water_file ($$$$) {
 	$statfh->print(join("\t",qw(ID Bp Subs Dels DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
 
 	foreach my $clone (sort keys %q) {
-		my ($bps,$subs,$del,$delbp,$ins,$insbp) = parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual);
+		my ($bps,$subs,$del,$delbp,$ins,$insbp) = parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual,$expt_hash->{start},$expt_hash->{end});
 		if (defined $q{$clone}->{bps}) {
 			my @bases = qw(A C G T N);
 			$statfh->print(join("\t",$clone,$q{$clone}->{bps},
@@ -575,6 +575,8 @@ sub parse_sw_alignment ($$$$) {
 	my $expt= shift;
 	my $q = shift;
 	my $min_qual = shift;
+	my $ref_start = shift;
+	my $ref_end = shift;
 
 	my $clone = $q->{clone};
 
@@ -611,6 +613,10 @@ sub parse_sw_alignment ($$$$) {
 		my $end;
 		foreach my $j (0 .. $#tseq) {
 			next if $tseq[$j] eq "-";
+			if ($pos < $ref_start) {
+				$pos++;
+				next;
+			}
 			$start = $pos if (!defined $start && $tseq[$j] ne "N");
 			$end = $pos if $tseq[$j] ne "N";
 			if ($tseq[$j] eq "N") {
@@ -619,8 +625,9 @@ sub parse_sw_alignment ($$$$) {
 				$end = undef;
 			}
 			$pos++;
+			last if $pos > $ref_end;
 		}
-		push(@pos_analyzed,$start."-".$tend) if defined $start;
+		push(@pos_analyzed,$start."-".$end) if defined $start;
 		$q->{coords} = join(",",@pos_analyzed);
 
 		my @bases = qw(A C G T N);
@@ -648,7 +655,7 @@ sub parse_sw_alignment ($$$$) {
 
 				my @testquals = @quals[max($qstart-1,$del_qstart-3)..min($qend-1,$qpos+1)];
 				#print(join(" ",$clone,"del",$del_tstart,$del_qstart-2,$qpos+2,@testquals)."\n");
-				if (mean(@testquals) >= $min_qual) {
+				if (mean(@testquals) >= $min_qual && $del_tstart >= $ref_start && $tpos-1 <= $ref_end) {
 					$fh->print(join("\t",$expt,$clone,$del_tstart,"del","","",$tpos-$del_tstart,$tpos-1)."\n");
 					$q->{del}++;
 					$q->{delbp} += $tpos-$del_tstart;
@@ -664,7 +671,7 @@ sub parse_sw_alignment ($$$$) {
 				#print(join(" ",$clone,'ins',$tpos,$ins_qstart,$qpos-1,@testquals)."\n");
 
 				my $size = $qpos-$ins_qstart;
-				if (mean(@testquals) >= $min_qual) {
+				if (mean(@testquals) >= $min_qual && $tpos >= $ref_start && $tpos <= $ref_end) {
 					$fh->print(join("\t",$expt,$clone,$tpos,"ins","","",$size,,"",join("",@ins))."\n");
 					$q->{ins}++;
 					$q->{insbp} += $size;
@@ -674,7 +681,7 @@ sub parse_sw_alignment ($$$$) {
 
 
 			if ($tseq[$i] ne $qseq[$i] && $tseq[$i] ne "N" && $qseq[$i] ne "N" && $qseq[$i] ne "X" ) {
-				if ($quals[$qpos] >= $min_qual) {
+				if ($quals[$qpos] >= $min_qual && $tpos >= $ref_start && $tpos <= $ref_end) {
 						$fh->print(join("\t",$expt,$clone,$tpos,"sub",$tseq[$i],$qseq[$i])."\n");
 						$q->{sub}++;
 						$q->{bx}->{$tseq[$i]}->{$qseq[$i]}++;

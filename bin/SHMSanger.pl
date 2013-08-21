@@ -351,7 +351,7 @@ sub process_experiment ($$) {
 
   my $vizdir = $outdir."/viz";
   mkdir $vizdir;
-  System(join(" ","Rscript $FindBin::Bin/../R/mutationVizSuite.R",$expt_hash->{mutfile},$expt_hash->{clonefile},$expt_hash->{reference},"$vizdir/$expt_id",">",$expt_hash->{exptdir}."/R.out 2>&1"));
+  System(join(" ","Rscript $FindBin::Bin/../R/mutationVizSuite.R",$expt_hash->{mutfile},$expt_hash->{clonefile},$expt_hash->{reference},"$vizdir/$expt_id","tstart=".$expt_hash->{start},"tend=".$expt_hash->{end},">",$expt_hash->{exptdir}."/R.out 2>&1"));
 
 
 }
