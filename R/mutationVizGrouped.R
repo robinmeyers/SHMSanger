@@ -189,5 +189,9 @@ for (group in 1:nrow(groups)) {
     hist(group_dels$Size,breaks=20,freq=T,xlab="Deletion Size",ylab="Frequency")
     dev.off()
   }
+  
+  pdf(paste(outdir,"/",paste(groups[group,],collapse="_"),"_cloneSubHist.pdf",sep=""),height=8,width=11)
+  hist(group_clones$Subs,breaks=50,freq=T,xlab="Number of Substitutions",ylab="Frequency")
+  dev.off()
 }
 
