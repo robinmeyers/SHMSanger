@@ -353,18 +353,29 @@ sub parse_smith_water_file ($$$$) {
 	}
 	$swfh->close;
 
+	my @bases = qw(A C G T N);
 
 
 	my $reffh = IO::File->new("<".$expt_hash->{reference}) or croak "Error: could not open reference file";
 	my ($refid,$refseq) = read_fasta($reffh);
 	$reffh->close;
 
-	$statfh->print(join("\t",qw(ID Bp Subs Dels LargeDels DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
+	$statfh->print(join("\t",qw(ID Bp Subs Dels LargeDel DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
+
+	my @bx_header = ("ID");
+	foreach my $b1 (@bases) {
+		next if $b1 eq "N";
+		foreach my $b2 (@bases) {
+			next if $b2 eq "N";
+			next if $b1 eq $b2;
+			push(@bx_header,$b1."->".$b2);
+		}
+	}
+	$bxfh->print(join("\t",@bx_header)."\n");
 
 	foreach my $clone (sort keys %q) {
 		my ($bps,$subs,$del,$delbp,$ins,$insbp) = parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual,$expt_hash->{start},$expt_hash->{end});
 		if (defined $q{$clone}->{bps}) {
-			my @bases = qw(A C G T N);
 			$statfh->print(join("\t",$clone,$q{$clone}->{bps},
 																		$q{$clone}->{sub},
 																		$q{$clone}->{del},
@@ -379,18 +390,27 @@ sub parse_smith_water_file ($$$$) {
 																		$q{$clone}->{$bases[4]},
 																		$q{$clone}->{coords})."\n");
 
-			$bxfh->print(join("\t",$clone,@bases)."\n");
-			foreach my $base (@bases) {
-				next if $base eq "N";
-				$bxfh->print(join("\t",$base,$q{$clone}->{bx}->{$base}->{$bases[0]},
-																		 $q{$clone}->{bx}->{$base}->{$bases[1]},
-																		 $q{$clone}->{bx}->{$base}->{$bases[2]},
-																		 $q{$clone}->{bx}->{$base}->{$bases[3]})."\n");
+			# $bxfh->print(join("\t",$clone,@bases)."\n");
+			my @bx_row = ($clone);
+			foreach my $b1 (@bases) {
+				next if $b1 eq "N";
+				foreach my $b2 (@bases) {
+					next if $b2 eq "N";
+					next if $b1 eq $b2;
+					push(@bx_row,$q{$clone}->{bx}->{$b1}->{$b2});
+				}
 			}
-			$bxfh->print("\n");
+			$bxfh->print(join("\t",@bx_row)."\n");
+			# 	$bxfh->print(join("\t",$base,$q{$clone}->{bx}->{$base}->{$bases[0]},
+			# 															 $q{$clone}->{bx}->{$base}->{$bases[1]},
+			# 															 $q{$clone}->{bx}->{$base}->{$bases[2]},
+			# 															 $q{$clone}->{bx}->{$base}->{$bases[3]})."\n");
+			
+			# $bxfh->print(join("\n"));
 
 		} else {
 			$statfh->print(join("\t", $clone, 0,"","","","","","","","","","","","","bad alignment")."\n");
+			$bxfh->print("$clone\n")
 		}
 	}
 
@@ -601,7 +621,7 @@ sub parse_sw_alignment ($$$$) {
 		my $qend = $q->{qend};
 
 
-		$q->{bps} = grep {$_ =~ /[ACGT]/} @tseq;
+		$q->{bps} = 0;
 		$q->{sub} = 0;
 		$q->{del} = 0;
 		$q->{delbp} = 0;
@@ -661,7 +681,7 @@ sub parse_sw_alignment ($$$$) {
 					$fh->print(join("\t",$expt,$clone,$del_tstart,"del","","",$tpos-$del_tstart,$tpos-1)."\n");
 					$q->{del}++;
 					$q->{delbp} += $tpos-$del_tstart;
-					$q->{largedel}++ if $tpos-$del_tstart > 10;
+					$q->{largedel} = $tpos-$del_tstart if $tpos-$del_tstart > $q->{largedel};
 				}
 				next;
 			}
@@ -691,8 +711,8 @@ sub parse_sw_alignment ($$$$) {
 					}
 			}
 
-
-			$q->{$tseq[$i]}++;
+			$q->{bps}++ if $tpos >= $ref_start && $tpos <= $ref_end;
+			$q->{$tseq[$i]}++ if $tpos >= $ref_start && $tpos <= $ref_end;
 			$i++;
 			$qpos++;
 			$tpos++;

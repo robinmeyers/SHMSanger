@@ -14,6 +14,8 @@ use Getopt::Long;
 use Carp;
 use IO::File;
 use Text::CSV;
+use List::MoreUtils qw(pairwise);
+use Data::Dumper;
 use threads;
 use threads::shared;
 use Interpolation 'arg:@->$' => \&argument;
@@ -73,6 +75,7 @@ my $delshmexptfile;
 my $clonefile;
 my $shmclonefile;
 my $delshmclonefile;
+my $bxexptfile;
 my $mutfile;
 #
 # Start of Program
@@ -158,19 +161,45 @@ sub create_summary {
   my $clonesfh = IO::File->new(">$clonefile");
   my $shmclonesfh = IO::File->new(">$shmclonefile");
   my $delshmclonesfh = IO::File->new(">$delshmclonefile");
-  $exptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $shmexptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $delshmexptsfh->print(join("\t",qw(Expt Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $clonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
-  $shmclonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
-  $delshmclonesfh->print(join("\t",qw(Expt Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $exptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $shmexptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $delshmexptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
+  $clonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $shmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $delshmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
 
+
+
+  my %bx;
+  my $bxexptsfh = IO::File->new(">$bxexptfile");
+  my @bx_combs = ();
+  my @bases = qw(A C G T);
+  foreach my $b1 (@bases) {
+    foreach my $b2 (@bases) {
+      next if $b1 eq $b2;
+      push(@bx_combs,$b1."->".$b2);
+    }
+  }
+  $bxexptsfh->print(join("\t","Expt","Allele",@bx_combs)."\n");
 
   foreach my $expt (sort keys %meta_hash) {
     my $clonefh = IO::File->new("<".$meta_hash{$expt}->{clonefile});
     my $csv = Text::CSV->new({sep_char => "\t"});
     my $header = $csv->getline($clonefh);
     $csv->column_names(@$header);
+
+    my $bxfh = IO::File->new("<".$meta_hash{$expt}->{base_ex});
+    my $bx_csv = Text::CSV->new({sep_char => "\t"});
+    my $bx_header = $bx_csv->getline($bxfh);
+    $bx_csv->column_names(@$bx_header);
+
+    @{$bx{$expt}}{@bx_combs} = (0) x @bx_combs;
+
+    while (my $clone = $bx_csv->getline_hr($bxfh)) {
+      $bx{$expt}->{$clone->{ID}} = $clone;
+    }
+    $bxfh->close;
+
 
     $stats{$expt}->{Clones} = 0;
     $stats{$expt}->{Bp} = 0;
@@ -214,7 +243,7 @@ sub create_summary {
     while (my $clone = $csv->getline_hr($clonefh)) {
 
       next unless $clone->{Bp} > 0;
-      next if $clone->{LargeDels} > 0 && $clone->{Subs} < 2;
+      next if $clone->{LargeDel} > 10 && $clone->{Subs} < 2;
       $stats{$expt}->{Clones}++;
       $stats{$expt}->{Bp} += $clone->{Bp};
       $stats{$expt}->{Subs} += $clone->{Subs};
@@ -228,7 +257,17 @@ sub create_summary {
       $stats{$expt}->{RefT} += $clone->{RefT};
       $stats{$expt}->{RefN} += $clone->{RefN};
 
-      $clonesfh->print(join("\t",$expt,
+      my @tmp1 = @{$bx{$expt}}{@bx_combs};
+      my @tmp2 = @{$bx{$expt}->{$clone->{ID}}}{@bx_combs};
+      # print "$expt ".$clone->{ID}.":\n";
+      # print "@tmp1\n";
+      # print "@tmp2\n";
+      our ($a,$b);
+      @{$bx{$expt}}{@bx_combs} = pairwise { $a + $b } @tmp1, @tmp2;
+
+
+
+      $clonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
                                 $clone->{Subs},
@@ -257,7 +296,7 @@ sub create_summary {
       $stats{$expt}->{SHMRefT} += $clone->{RefT};
       $stats{$expt}->{SHMRefN} += $clone->{RefN};
 
-      $shmclonesfh->print(join("\t",$expt,
+      $shmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
                                 $clone->{Subs},
@@ -272,7 +311,7 @@ sub create_summary {
                                 $clone->{RefN},
                                 $clone->{Coords})."\n");
 
-      next unless $clone->{DelBp} > 0;
+      next unless $clone->{LargeDel} > 2;
       $stats{$expt}->{DelSHMClones}++;
       $stats{$expt}->{DelSHMBp} += $clone->{Bp};
       $stats{$expt}->{DelSHMSubs} += $clone->{Subs};
@@ -286,7 +325,7 @@ sub create_summary {
       $stats{$expt}->{DelSHMRefT} += $clone->{RefT};
       $stats{$expt}->{DelSHMRefN} += $clone->{RefN};
 
-      $delshmclonesfh->print(join("\t",$expt,
+      $delshmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
                                 $clone->{Subs},
@@ -302,13 +341,16 @@ sub create_summary {
                                 $clone->{Coords})."\n");
 
     }
-
     $clonefh->close;
+
+
+
+
 
     my $mutrate = $stats{$expt}->{Bp} - $stats{$expt}->{DelBp} > 0 ? $stats{$expt}->{Subs}/($stats{$expt}->{Bp} - $stats{$expt}->{DelBp}) : "";
     my $shmmutrate = $stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp} > 0 ? $stats{$expt}->{SHMSubs}/($stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp}) : "";
 
-    $exptsfh->print(join("\t",$expt,$stats{$expt}->{Clones},
+    $exptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},$stats{$expt}->{Clones},
                                   $stats{$expt}->{Bp},
                                   $stats{$expt}->{Subs},
                                   $stats{$expt}->{Del},                                  
@@ -321,7 +363,7 @@ sub create_summary {
                                   $stats{$expt}->{RefT},
                                   $stats{$expt}->{RefN})."\n");
 
-    $shmexptsfh->print(join("\t",$expt,$stats{$expt}->{SHMClones},
+    $shmexptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},$stats{$expt}->{SHMClones},
                                   $stats{$expt}->{SHMBp},
                                   $stats{$expt}->{SHMSubs},
                                   $stats{$expt}->{SHMDel},                                  
@@ -334,7 +376,7 @@ sub create_summary {
                                   $stats{$expt}->{SHMRefT},
                                   $stats{$expt}->{SHMRefN})."\n");
 
-    $delshmexptsfh->print(join("\t",$expt,$stats{$expt}->{DelSHMClones},
+    $delshmexptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},$stats{$expt}->{DelSHMClones},
                                   $stats{$expt}->{DelSHMBp},
                                   $stats{$expt}->{DelSHMSubs},
                                   $stats{$expt}->{DelSHMDel},                                  
@@ -347,6 +389,8 @@ sub create_summary {
                                   $stats{$expt}->{DelSHMRefT},
                                   $stats{$expt}->{DelSHMRefN})."\n");
 
+    $bxexptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},@{$bx{$expt}}{@bx_combs})."\n");
+
     
   }
 
@@ -356,6 +400,7 @@ sub create_summary {
   $clonesfh->close;
   $shmclonesfh->close;
   $delshmclonesfh->close;
+  $bxexptsfh->close;
   System("cat $outdir/experiments/*/*_muts.txt > $mutfile");
 
   mkdir "$outdir/group_viz";
@@ -369,7 +414,36 @@ sub create_summary {
   my $del_shm_group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $delshmexptfile $delshmclonefile $meta_file $outdir/GroupSHMDel.txt grouping=\"genotype,allele,tissue,pna\"";
   System("$del_shm_group_cmd >> $outdir/group_viz/R.out 2>&1");
 
+  my $bx_group_cmd = "Rscript $FindBin::Bin/../R/baseExGroup.R $bxexptfile $meta_file $outdir/GroupBXTabular.txt";
+  System("$bx_group_cmd");
 
+  
+  my $infh = IO::File->new("<$outdir/GroupBXTabular.txt");
+  my $outfh = IO::File->new(">$outdir/GroupBX.txt");
+
+  my $csv = Text::CSV->new({sep_char => "\t"});
+  my $header = $csv->getline($infh);
+  $csv->column_names(@$header);
+
+  my @bases = qw(A C G T);
+
+  while (my $group = $csv->getline_hr($infh)) {
+    $outfh->print(join(" ",$group->{genotype},$group->{allele},$group->{tissue},$group->{pna})."\n");
+    $outfh->print(join("\t","Base",@bases)."\n");
+    foreach my $b1 (@bases) {
+      my @row = ($b1);
+      foreach my $b2 (@bases) {
+        if ($b1 eq $b2) {
+          push(@row, "-");
+        } else {
+          push(@row,$group->{$b1."..".$b2})
+        }
+      }
+      $outfh->print(join("\t",@row)."\n");
+    }
+    $outfh->print("\n");
+
+  }
 
   my $mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Mouse.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
   System("$mouse_cmd >> $outdir/group_viz/R.out 2>&1");
@@ -508,6 +582,8 @@ sub check_existance_of_files {
   $clonefile = "$outdir/Clones.txt";
   $shmclonefile = "$outdir/ClonesSHM.txt";
   $delshmclonefile = "$outdir/ClonesSHMDel.txt";
+  $bxexptfile = "$outdir/ExptsBX.txt";
+
   $mutfile = "$outdir/Mutations.txt";
 	croak "Error: Output file $exptfile already exists and overwrite switch --ow not set" if (-r $exptfile && ! defined $ow);
 	System("touch $exptfile",1);
