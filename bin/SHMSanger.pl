@@ -164,9 +164,9 @@ sub create_summary {
   $exptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
   $shmexptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
   $delshmexptsfh->print(join("\t",qw(Expt Allele Clones Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN))."\n");
-  $clonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
-  $shmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
-  $delshmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $clonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp LargeDel Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $shmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp LargeDel Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
+  $delshmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp LargeDel Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
 
 
 
@@ -273,6 +273,7 @@ sub create_summary {
                                 $clone->{Subs},
                                 $clone->{Dels},
                                 $clone->{DelBp},
+                                $clone->{LargeDel},
                                 $clone->{Ins},
                                 $clone->{InsBp},
                                 $clone->{RefA},
@@ -302,6 +303,7 @@ sub create_summary {
                                 $clone->{Subs},
                                 $clone->{Dels},
                                 $clone->{DelBp},
+                                $clone->{LargeDel},
                                 $clone->{Ins},
                                 $clone->{InsBp},
                                 $clone->{RefA},
@@ -331,6 +333,7 @@ sub create_summary {
                                 $clone->{Subs},
                                 $clone->{Dels},
                                 $clone->{DelBp},
+                                $clone->{LargeDel},
                                 $clone->{Ins},
                                 $clone->{InsBp},
                                 $clone->{RefA},
@@ -425,7 +428,6 @@ sub create_summary {
   my $header = $csv->getline($infh);
   $csv->column_names(@$header);
 
-  my @bases = qw(A C G T);
 
   while (my $group = $csv->getline_hr($infh)) {
     $outfh->print(join(" ",$group->{genotype},$group->{allele},$group->{tissue},$group->{pna})."\n");
