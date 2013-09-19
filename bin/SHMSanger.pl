@@ -38,9 +38,7 @@ select( (select(STDOUT), $| = 1 )[0] );
 sub parse_command_line;
 sub read_in_meta_file;
 sub check_existance_of_files;
-sub initialize_stats_hash;
 sub process_experiment ($$);
-sub write_summary_stats;
 sub create_summary;
 
 
@@ -96,7 +94,6 @@ read_in_meta_file;
 
 check_existance_of_files;
 
-#initialize_stats_hash;
 
 
 my @threads = ();
@@ -132,13 +129,12 @@ foreach my $expt_id (sort keys %meta_hash) {
 
 # waits for all threads to finish
 while( scalar threads->list(threads::all) > 0) {
-    for my $thr (@threads) {
-        $thr->join() if $thr->is_joinable;
-    }
-    sleep(1);
+  for my $thr (@threads) {
+      $thr->join() if $thr->is_joinable;
+  }
+  sleep(1);
 }
 
-#write_summary_stats;
 
 create_summary;
 
@@ -508,19 +504,6 @@ sub process_experiment ($$) {
 
 }
 
-# sub initialize_stats_hash {
-#  	foreach my $expt_id (sort keys %meta_hash) {
-#  		my %temp_hash :shared;
-#     $temp_hash{bases} = 0;
-#  		$temp_hash{subs} = 0;
-#  		$temp_hash{ins} = 0;
-#  		$temp_hash{del} = 0;
-#     $temp_hash{insbp} = 0;
-#     $temp_hash{delbp} = 0;
-#  		$stats{$expt_id} = \%temp_hash;
-#  	}
-# }
-
 
 sub check_existance_of_files {
 	print "\nSearching for sequence files...\n";
@@ -613,24 +596,6 @@ sub read_in_meta_file {
 
 }
 
-sub write_summary_stats {
-#	print "\nWriting summary statistics...";
-#	my $sumfh = IO::File->new(">$summaryfile");
-#	$sumfh->print(join("\t",qw(Experiment Deletions Insertions SingleBpDel SingleBpIns Complex Total))."\n");
-#	foreach my $expt_id (sort keys %stats) {
-#		$sumfh->print(join("\t",$expt_id,
-#														$stats{$expt_id}->{dels},
-#														$stats{$expt_id}->{ins},
-#														$stats{$expt_id}->{singledel},
-#														$stats{$expt_id}->{singleins},
-#														$stats{$expt_id}->{complex},
-#														$stats{$expt_id}->{total})."\n");
-#	}
-#	$sumfh->close;
-#	print "Done\n";
-#
-
-}
 
 sub parse_command_line {
 	my $help;

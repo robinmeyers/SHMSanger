@@ -374,7 +374,7 @@ sub parse_smith_water_file ($$$$) {
 	$bxfh->print(join("\t",@bx_header)."\n");
 
 	foreach my $clone (sort keys %q) {
-		my ($bps,$subs,$del,$delbp,$ins,$insbp) = parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual,$expt_hash->{start},$expt_hash->{end});
+		parse_sw_alignment($outfh,$expt_id,$q{$clone},$min_qual,$expt_hash->{start},$expt_hash->{end});
 		if (defined $q{$clone}->{bps}) {
 			$statfh->print(join("\t",$clone,$q{$clone}->{bps},
 																		$q{$clone}->{sub},
