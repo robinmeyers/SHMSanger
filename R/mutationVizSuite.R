@@ -86,7 +86,8 @@ tictactoePlot(subs,dels,blocks,ref,tstart,tend,plotrows,cloneIDs)
 dev.off()
 
 pdf(paste(outstub,"_subDens.pdf",sep=""),height=8,width=11)
-connectfourSubPlot(subs, blocks, ref, tstart, tend, plotrows,cloneIDs)
+ref <- connectfourSubPlot(subs, blocks, ref, tstart, tend, plotrows,cloneIDs)
+write.table(ref,paste(outstub,"_bases.txt",sep=""),quote=F,sep="\t",na="",row.names=F,col.names=T)
 dev.off()
 
 pdf(paste(outstub,"_delDens.pdf",sep=""),height=8,width=11)

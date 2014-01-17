@@ -99,7 +99,7 @@ connectfourSubPlot <- function (subs, blocks, ref, tstart, tend, plotrows, clone
   
   dens <- data.frame(x=c(ref$Pos-0.49,ref$Pos+0.49),y=c(ref$dens,ref$dens))
   dens <- dens[order(dens$x),]
-  ymax <- max(0.01,1.25*dens$y)
+  ymax <- max(0.05,1.25*dens$y)
   
   refy <- -ymax/20
   
@@ -128,6 +128,8 @@ connectfourSubPlot <- function (subs, blocks, ref, tstart, tend, plotrows, clone
     points(1:nrow(ref),rep(refy,nrow(ref)),col=basecolors[ref$color],pch=ascii[ref$pch],cex=0.6)
     lines(dens$x,dens$y)
   }
+
+  return(ref)
 }
 
 connectfourDelPlot <- function (dels, blocks, ref, tstart, tend, plotrows, cloneIDs) {
