@@ -10,7 +10,8 @@ ARGS <- c(
 
 OPTS <- c(
   "grouping","character","genotype,allele,tissue,pna","meta file variables to group by",
-  "plotrows","numeric",4,"Rows on plot"
+  "plotrows","numeric",4,"Rows on plot",
+  "minsubs","numeric",0,"minimum number of substitutions for a clone to be included"
 )
 
 source_local <- function(fname){
@@ -77,7 +78,9 @@ for (group in 1:nrow(groups)) {
   
   blocks <- data.frame(Clone=integer(),Start=integer(),End=integer())
   
-  cloneIDs <- group_clones$Clone[group_clones$Bp > 0]
+  cloneIDs <- group_clones$Clone[group_clones$Bp > 0 & group_clones$Subs >= minsubs]
+  
+  group_subs <- group_subs[group_subs$Clone %in% cloneIDs,]
   
   if (length(cloneIDs) > 0) {
     for (i in 1:length(cloneIDs)) {
@@ -106,7 +109,8 @@ for (group in 1:nrow(groups)) {
   dev.off()
   
   pdf(paste(outdir,"/",paste(groups[group,],collapse="_"),"_subDens.pdf",sep=""),height=8,width=11)
-  connectfourSubPlot(group_subs, blocks, ref, tstart, tend, plotrows,cloneIDs)
+  ref <- connectfourSubPlot(group_subs, blocks, ref, tstart, tend, plotrows,cloneIDs)
+  write.table(ref,paste(outdir,"/",paste(groups[group,],collapse="_"),"_bases.txt",sep=""),quote=F,sep="\t",na="",row.names=F,col.names=T)
   dev.off()
   
   pdf(paste(outdir,"/",paste(groups[group,],collapse="_"),"_delDens.pdf",sep=""),height=8,width=11)

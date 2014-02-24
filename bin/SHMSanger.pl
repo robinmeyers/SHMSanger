@@ -58,6 +58,7 @@ my $phred;
 my $min_qual = 15;
 my $min_sw_score = 100;
 my $shm_threshold = 3;
+my $minplotsubs = 0;
 my $ow;
 
 # Global variabless
@@ -403,7 +404,7 @@ sub create_summary {
   System("cat $outdir/experiments/*/*_muts.txt > $mutfile");
 
   mkdir "$outdir/group_viz";
-  my $viz_cmd = "Rscript $FindBin::Bin/../R/mutationVizGrouped.R $meta_file $mutfile $clonefile $refdir $outdir/group_viz/";
+  my $viz_cmd = "Rscript $FindBin::Bin/../R/mutationVizGrouped.R $meta_file $mutfile $clonefile $refdir $outdir/group_viz/ minsubs=$minplotsubs";
   System("$viz_cmd > $outdir/group_viz/R.out 2>&1");
 
   my $group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Group.txt grouping=\"genotype,allele,tissue,pna\"";
@@ -499,7 +500,7 @@ sub process_experiment ($$) {
 
   my $vizdir = $outdir."/viz";
   mkdir $vizdir;
-  System(join(" ","Rscript $FindBin::Bin/../R/mutationVizSuite.R",$expt_hash->{mutfile},$expt_hash->{clonefile},$expt_hash->{reference},"$vizdir/$expt_id","tstart=".$expt_hash->{start},"tend=".$expt_hash->{end},">",$expt_hash->{exptdir}."/R.out 2>&1"));
+  System(join(" ","Rscript $FindBin::Bin/../R/mutationVizSuite.R",$expt_hash->{mutfile},$expt_hash->{clonefile},$expt_hash->{reference},"$vizdir/$expt_id","tstart=".$expt_hash->{start},"tend=".$expt_hash->{end},"minsubs=$minplotsubs",">",$expt_hash->{exptdir}."/R.out 2>&1"));
 
 
 }
@@ -614,6 +615,7 @@ sub parse_command_line {
                             "minscore=i" => \$min_sw_score ,                            
                             "minqual=i" => \$min_qual ,
 														"threads=i" => \$max_threads ,
+                            "minplotsubs=i" => \$minplotsubs,
                             "phred" => \$phred ,
 														"ow" => \$ow ,
 														"help" => \$help
@@ -659,6 +661,7 @@ $arg{"--threads","Number of processing core threads to run on",$max_threads}
 $arg{"--phred","Force phred to run"}
 $arg{"--minscore","Minimum score to accept alignment",$min_sw_score}
 $arg{"--minqual","Minimum quality to accept mutation",$min_qual}
+$arg{"--minplotsubs","Minimum number of substitutions a clone must have to be included in the R plots",$minplotsubs}
 $arg{"--ow","Overwrite output files if they already exist"}
 $arg{"--help","This helpful help screen."}
 

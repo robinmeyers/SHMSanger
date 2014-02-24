@@ -9,7 +9,8 @@ ARGS <- c(
 OPTS <- c(
   "tstart","numeric",0,"Start of reference to view",
   "tend","numeric",0,"End of reference to view",
-  "plotrows","numeric",4,"Rows on plot"
+  "plotrows","numeric",4,"Rows on plot",
+  "minsubs","numeric",0,"minimum number of substitutions for a clone to be included"
 )
 
 source_local <- function(fname){
@@ -41,7 +42,9 @@ subs <- muts[ muts$Type == "sub",]
 
 dels <- muts [ muts$Type == "del",]
 
-cloneIDs <- clones$ID[clones$ID %in% muts$Clone[muts$Type != "ins"] & clones$Bp > 0]
+cloneIDs <- clones$ID[clones$Bp > 0 & clones$Subs > minsubs]
+subs <- subs[subs$Clone %in% cloneIDs,]
+
 
 if (tstart == 0) {
   tstart <- 1
