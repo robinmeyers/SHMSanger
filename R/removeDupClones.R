@@ -18,6 +18,7 @@ source_local("Rsub.R")
 
 parseArgs("removeDupClones.R", ARGS, OPTS)
 
+library(gplots)
 
 muts <- read.delim(mutfile,header=F,as.is=T,col.names=c("Expt","ID","Pos","Type","From","To","Size","End","Ins"))
 clones <- read.delim(clonefile,header=T,as.is=T)
@@ -26,6 +27,8 @@ clones$Index <- clones$Subs + clones$DelBp + clones$InsBp
 
 clones <- clones[rev(order(clones$Index)),]
 clones$Dup <- ""
+
+heat <- matrix(NA,nrow(clones),nrow(clones))
 
 for (i in 2:nrow(clones)) {
   if (is.na(clones$Index[i]) || clones$Index[i] < 1) next
@@ -84,6 +87,8 @@ for (i in 2:nrow(clones)) {
       }
     }
     
+    if (pts_possible > 0) heat[i,j] <- pts_awarded/pts_possible
+
     if (pts_possible > 0 && pts_awarded/pts_possible >= perc_similar/100) {
       #cat(clones$ID[i],"is a clone of",clones$ID[j],"with",pts_awarded,"out of",pts_possible,"\n")
       clones$Dup[i] <- clones$ID[j]
@@ -103,5 +108,14 @@ for (i in 2:nrow(clones)) {
 }
 
 clones$Index <- NULL
+
+n.col <- 12
+
+pdf(sub(".txt","_similarity.pdf",clonefile))
+heatmap.2(heat,dendrogram="none",trace="none",Rowv=F,Colv=F,
+  keysize=3,col=colorRampPalette(c("blue","red"))(n.col),
+  breaks=seq(0,1,length.out=n.col+1),na.color=grey(0.5))
+dev.off()
+
 
 write.table(clones,clonefile,quote=F,sep="\t",na="",row.names=F,col.names=T)

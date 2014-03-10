@@ -1,8 +1,8 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 ##
-## This program analyzes deletions and insertions
-## in NGS amplicon sequence data
+## This program analyzes somatic hypermutation
+## from Sanger sequencing data
 ##
 ## run with "--help" for usage information
 ##
@@ -26,7 +26,6 @@ use FindBin;
 use lib abs_path("$FindBin::Bin/../lib");
 
 require "SHMSangerHelper.pl";
-require "pslHelper.pl";
 
 
 # Flush output after every write
@@ -57,7 +56,7 @@ my $max_threads = 2;
 my $phred;
 my $min_qual = 15;
 my $min_sw_score = 100;
-my $shm_threshold = 3;
+my $shm_threshold = 0;
 my $minplotsubs = 0;
 my $ow;
 
@@ -99,6 +98,8 @@ check_existance_of_files;
 
 my @threads = ();
 
+
+# Standard multithreading loop - each experiment is a thread
 foreach my $expt_id (sort keys %meta_hash) {
 
     while (1) {
@@ -151,7 +152,17 @@ printf("\nFinished all processes in %.2f seconds.\n", $t1);
 
 sub create_summary {
 
+
+  # Define stats and base exchange hashes
   my %stats;
+  my %bx;
+
+
+  # Open file handles and print headers
+  # Experiment and Clone file for each of three levels
+  # 1) All clones
+  # 2) Clones having at least n mutations
+  # 3) Clones having at least n mutations and a deletion at least n bases long
   my $exptsfh = IO::File->new(">$exptfile");
   my $shmexptsfh = IO::File->new(">$shmexptfile");
   my $delshmexptsfh = IO::File->new(">$delshmexptfile");
@@ -165,9 +176,7 @@ sub create_summary {
   $shmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp LargeDel Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
   $delshmclonesfh->print(join("\t",qw(Expt Allele Clone Bp Subs Del DelBp LargeDel Ins InsBp RefA RefC RefG RefT RefN Coords))."\n");
 
-
-
-  my %bx;
+  # Base exchange file has all mutations listed in a single row to allow for tabulated experiment data
   my $bxexptsfh = IO::File->new(">$bxexptfile");
   my @bx_combs = ();
   my @bases = qw(A C G T);
@@ -179,12 +188,16 @@ sub create_summary {
   }
   $bxexptsfh->print(join("\t","Expt","Allele",@bx_combs)."\n");
 
+  # For 
   foreach my $expt (sort keys %meta_hash) {
+
+    # Open experiment clonefile
     my $clonefh = IO::File->new("<".$meta_hash{$expt}->{clonefile});
     my $csv = Text::CSV->new({sep_char => "\t"});
     my $header = $csv->getline($clonefh);
     $csv->column_names(@$header);
 
+    # Open experiment base exchange file
     my $bxfh = IO::File->new("<".$meta_hash{$expt}->{base_ex});
     my $bx_csv = Text::CSV->new({sep_char => "\t"});
     my $bx_header = $bx_csv->getline($bxfh);
@@ -192,6 +205,7 @@ sub create_summary {
 
     @{$bx{$expt}}{@bx_combs} = (0) x @bx_combs;
 
+    # Read in each clones base exchange exchange stats
     while (my $clone = $bx_csv->getline_hr($bxfh)) {
       $bx{$expt}->{$clone->{ID}} = $clone;
     }
@@ -237,10 +251,15 @@ sub create_summary {
     $stats{$expt}->{DelSHMRefT} = 0;
     $stats{$expt}->{DelSHMRefN} = 0;
 
+
+    # Read through clone file for each experiment
     while (my $clone = $csv->getline_hr($clonefh)) {
 
+      # Clones are marked as 0 Bp if they are a repeat (or unaligned)
       next unless $clone->{Bp} > 0;
-      next if $clone->{LargeDel} > 10 && $clone->{Subs} < 2;
+      # !!!!!!!What is this next line doing?
+      # next if $clone->{LargeDel} > 10 && $clone->{Subs} < 2;
+      # Add clone stats to overall experiment stats
       $stats{$expt}->{Clones}++;
       $stats{$expt}->{Bp} += $clone->{Bp};
       $stats{$expt}->{Subs} += $clone->{Subs};
@@ -254,16 +273,19 @@ sub create_summary {
       $stats{$expt}->{RefT} += $clone->{RefT};
       $stats{$expt}->{RefN} += $clone->{RefN};
 
+
+      # Experiment bx stats
       my @tmp1 = @{$bx{$expt}}{@bx_combs};
+      # Clone bx stats
       my @tmp2 = @{$bx{$expt}->{$clone->{ID}}}{@bx_combs};
-      # print "$expt ".$clone->{ID}.":\n";
-      # print "@tmp1\n";
-      # print "@tmp2\n";
+
       our ($a,$b);
+
+      # Update experiment bx stats by adding in clone bx stats
       @{$bx{$expt}}{@bx_combs} = pairwise { $a + $b } @tmp1, @tmp2;
 
 
-
+      # Print clones stats to Clone summary file
       $clonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
@@ -280,7 +302,10 @@ sub create_summary {
                                 $clone->{RefN},
                                 $clone->{Coords})."\n");
 
+      # Apply Level 2 criterion - minimum of n mutations
       next unless $clone->{Subs} > $shm_threshold;
+
+      # Add mutated clones to experiment Level 2 summary stats
       $stats{$expt}->{SHMClones}++;
       $stats{$expt}->{SHMBp} += $clone->{Bp};
       $stats{$expt}->{SHMSubs} += $clone->{Subs};
@@ -293,7 +318,7 @@ sub create_summary {
       $stats{$expt}->{SHMRefG} += $clone->{RefG};
       $stats{$expt}->{SHMRefT} += $clone->{RefT};
       $stats{$expt}->{SHMRefN} += $clone->{RefN};
-
+      # Print clone stats to clone Level 2 summary stats
       $shmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
@@ -310,7 +335,9 @@ sub create_summary {
                                 $clone->{RefN},
                                 $clone->{Coords})."\n");
 
-      next unless $clone->{LargeDel} > 2;
+      # Apply Level 3 criterion - Must contain a deletion at least n bases large
+      next unless $clone->{LargeDel} > 0;
+      # Add mutated/deleted clones to experiment Level 3 summary stats
       $stats{$expt}->{DelSHMClones}++;
       $stats{$expt}->{DelSHMBp} += $clone->{Bp};
       $stats{$expt}->{DelSHMSubs} += $clone->{Subs};
@@ -323,7 +350,7 @@ sub create_summary {
       $stats{$expt}->{DelSHMRefG} += $clone->{RefG};
       $stats{$expt}->{DelSHMRefT} += $clone->{RefT};
       $stats{$expt}->{DelSHMRefN} += $clone->{RefN};
-
+      # Pring clone stats to clone Level 3 summary stats
       $delshmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
                                 $clone->{ID},
                                 $clone->{Bp},
@@ -341,15 +368,16 @@ sub create_summary {
                                 $clone->{Coords})."\n");
 
     }
+    # Done reading through experiment's clone file
     $clonefh->close;
 
 
-
-
-
+    # Calculate experiment mutation rate for Level 1 and Level 2 clones
+    # Substitutions/(Total basepairs aligned to - deleted basepairs)
     my $mutrate = $stats{$expt}->{Bp} - $stats{$expt}->{DelBp} > 0 ? $stats{$expt}->{Subs}/($stats{$expt}->{Bp} - $stats{$expt}->{DelBp}) : "";
     my $shmmutrate = $stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp} > 0 ? $stats{$expt}->{SHMSubs}/($stats{$expt}->{SHMBp} - $stats{$expt}->{SHMDelBp}) : "";
 
+    # Print experiment summary stats for Levels 1, 2, and 3
     $exptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},$stats{$expt}->{Clones},
                                   $stats{$expt}->{Bp},
                                   $stats{$expt}->{Subs},
@@ -388,7 +416,7 @@ sub create_summary {
                                   $stats{$expt}->{DelSHMRefG},
                                   $stats{$expt}->{DelSHMRefT},
                                   $stats{$expt}->{DelSHMRefN})."\n");
-
+    # Print base exchange stats
     $bxexptsfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},@{$bx{$expt}}{@bx_combs})."\n");
 
     
@@ -401,12 +429,17 @@ sub create_summary {
   $shmclonesfh->close;
   $delshmclonesfh->close;
   $bxexptsfh->close;
+
+  # All mutations included in mutations file
   System("cat $outdir/experiments/*/*_muts.txt > $mutfile");
 
   mkdir "$outdir/group_viz";
+  # Create mutation visualizations by groups
   my $viz_cmd = "Rscript $FindBin::Bin/../R/mutationVizGrouped.R $meta_file $mutfile $clonefile $refdir $outdir/group_viz/ minsubs=$minplotsubs";
   System("$viz_cmd > $outdir/group_viz/R.out 2>&1");
 
+
+  # Create grouped stats for experiments for Levels 1, 2, and 3
   my $group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Group.txt grouping=\"genotype,allele,tissue,pna\"";
   System("$group_cmd >> $outdir/group_viz/R.out 2>&1");
   my $shm_group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/GroupSHM.txt grouping=\"genotype,allele,tissue,pna\"";
@@ -414,10 +447,11 @@ sub create_summary {
   my $del_shm_group_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $delshmexptfile $delshmclonefile $meta_file $outdir/GroupSHMDel.txt grouping=\"genotype,allele,tissue,pna\"";
   System("$del_shm_group_cmd >> $outdir/group_viz/R.out 2>&1");
 
+  # Group base exchange stats
   my $bx_group_cmd = "Rscript $FindBin::Bin/../R/baseExGroup.R $bxexptfile $meta_file $outdir/GroupBXTabular.txt";
   System("$bx_group_cmd");
 
-  
+  # Un-tabulate GroupBXTabular file
   my $infh = IO::File->new("<$outdir/GroupBXTabular.txt");
   my $outfh = IO::File->new(">$outdir/GroupBX.txt");
 
@@ -444,6 +478,7 @@ sub create_summary {
 
   }
 
+  # Same as grouping stats but aggregate on mouse number as well
   my $mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $exptfile $clonefile $meta_file $outdir/Mouse.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
   System("$mouse_cmd >> $outdir/group_viz/R.out 2>&1");
   my $shm_mouse_cmd = "Rscript $FindBin::Bin/../R/mutationStats.R $shmexptfile $shmclonefile $meta_file $outdir/MouseSHM.txt grouping=\"genotype,allele,mouse,tissue,pna\"";
@@ -452,17 +487,22 @@ sub create_summary {
   System("$del_shm_mouse_cmd >> $outdir/group_viz/R.out 2>&1");
 }
 
+
+
 sub process_experiment ($$) {
 
 	my $expt_id = shift;
 	my $expt_hash = shift;
 
-
+  # 'raw' key will have been set if fasta and qual files are not found
   if ($phred || defined $expt_hash->{raw}) {
+    # Apply phred on the experiment trace files for each clone to create fasta and qual files
+    # Consult phred documentation for further info
     my $phred_cmd = join(" ","phred -id",$expt_hash->{raw},"-sa",$expt_hash->{phred},"-qa",$expt_hash->{phred}.".qual",$phredopt,">>",$expt_hash->{exptdir}."/phred.out 2>&1");
     System($phred_cmd);
   }
 
+  # Remove any vector sequence from clone fasta files 
   my $screen_cmd = join(" ","cross_match",$expt_hash->{phred},$expt_hash->{vector},$screenopt,"-screen",">>",$expt_hash->{exptdir}."/screen.out 2>&1");
   System($screen_cmd);
 
@@ -470,7 +510,7 @@ sub process_experiment ($$) {
 
   mkdir $expt_hash->{seqdir} unless -d $expt_hash->{seqdir};
 
-
+  # Move phredded and screened (fasta/qual) files to results directory
   $expt_hash->{phred} =~ s/\/\//\//g;
   my ($phr_path,$phr_name,$phr_ext ) = parseFilename($expt_hash->{phred});
   System(join(" ","mv",$expt_hash->{phred}.".screen",$expt_hash->{seqdir}."/".$phr_name.$phr_ext),1);
@@ -485,21 +525,27 @@ sub process_experiment ($$) {
   $expt_hash->{phrapdir} = $expt_hash->{exptdir}."/phrap";
   mkdir $expt_hash->{phrapdir} unless -d $expt_hash->{phrapdir};
 
+  # Use phrap to assembly the sequence pairs for each clone
   phrap_sequence_pairs($expt_id,$expt_hash,$phrapopt);
 
   $expt_hash->{water} = $expt_hash->{exptdir} . "/${expt_id}.water";
   $expt_hash->{waternice} = $expt_hash->{exptdir} . "/${expt_id}_nice.water";
 
+  # Run the smith-waterman program from EMBOSS to align the contig to the reference
   (my $niceswopt = $swopt) =~ s/-aformat markx10//;
   System(join(" ","water","-asequence",$expt_hash->{reference},"-bsequence",$expt_hash->{contig},"-outfile",$expt_hash->{water},$swopt));
+  # Run again with a pretty output format
   System(join(" ","water","-asequence",$expt_hash->{reference},"-bsequence",$expt_hash->{contig},"-outfile",$expt_hash->{waternice},$niceswopt));
 
+  # Tabulate mutations from the alignment
   parse_smith_water_file($expt_id,$expt_hash,$min_sw_score,$min_qual);
 
+  # Remove duplicate clones
   System(join(" ","Rscript $FindBin::Bin/../R/removeDupClones.R",$expt_hash->{mutfile},$expt_hash->{clonefile}));
 
   my $vizdir = $outdir."/viz";
   mkdir $vizdir;
+  # Create mutation vizualisations
   System(join(" ","Rscript $FindBin::Bin/../R/mutationVizSuite.R",$expt_hash->{mutfile},$expt_hash->{clonefile},$expt_hash->{reference},"$vizdir/$expt_id","tstart=".$expt_hash->{start},"tend=".$expt_hash->{end},"minsubs=$minplotsubs",">",$expt_hash->{exptdir}."/R.out 2>&1"));
 
 
@@ -514,14 +560,17 @@ sub check_existance_of_files {
 		my $input = $indir."/".$expt_id;
 		my @exts = qw(.fa .fasta);
 		foreach my $ext (@exts) {
+      # Set fasta and qual files if they can be found
 			if (-r $input.$ext && -r $input.$ext.".qual") {
 				$meta_hash{$expt_id}->{phred} = $input.$ext;
         $meta_hash{$expt_id}->{qual} = $input.$ext.".qual";
 				last;
 			}
 		}
+    # If phred-ed fasta file not found (or phred is explicitly set in options)
     if (! defined $meta_hash{$expt_id}->{phred} || $phred) {
       if (-d $input && scalar listFilesInDir($input) > 0 ) {
+        # Set input trace file directory in experiment hash
         $meta_hash{$expt_id}->{raw} = $input;
         $meta_hash{$expt_id}->{phred} = $input.".fa";
         $meta_hash{$expt_id}->{qual} = $meta_hash{$expt_id}->{phred}.".qual";
@@ -534,7 +583,7 @@ sub check_existance_of_files {
 	
 
 	print "\nSearching for reference files...\n";
-
+  # Make sure the reference files exist in the indicated directory
 	foreach my $expt_id (sort keys %meta_hash) {
 		my $reffile = $refdir."/".$meta_hash{$expt_id}->{reference};
 		croak "Error: Could not locate reference file $reffile in $indir" unless (-r $reffile);
@@ -546,6 +595,8 @@ sub check_existance_of_files {
 	
 	print "Done.\n";
   mkdir "$outdir/experiments";
+  mkdir "$outdir/mergenice";
+  # Define and check on experiment output files
 	print "\nChecking on output files...\n";
 	foreach my $expt_id (sort keys %meta_hash) {
     my $exptdir = "$outdir/experiments/$expt_id/";
@@ -554,14 +605,23 @@ sub check_existance_of_files {
 		my $file = $exptdir."/".$expt_id."_muts.txt";
     my $stats = $exptdir."/".$expt_id."_clones.txt";
     my $base_ex = $exptdir."/".$expt_id."_baseEx.txt";
+    my $mergenice = $outdir."/mergenice/".$expt_id."_mergenice.txt";
+    # Only actually check mutation file
 		croak "Error: Output file $file already exists and overwrite switch --ow not set" if (-r $file && ! defined $ow);
-		System("touch $file",1);
+		
+    # Try to create file and croak unless it's writable
+    System("touch $file",1);
 		croak "Error: Cannot write to $file" unless (-w $file);
+
+    # Set output files in the experiment hash
 		$meta_hash{$expt_id}->{mutfile} = $file;
     $meta_hash{$expt_id}->{clonefile} = $stats;
     $meta_hash{$expt_id}->{base_ex} = $base_ex;
+    $meta_hash{$expt_id}->{mergenice} = $mergenice;
 
 	}
+
+  # Define summary files
 	$exptfile = "$outdir/Expts.txt";
   $shmexptfile = "$outdir/ExptsSHM.txt";
   $delshmexptfile = "$outdir/ExptsSHMDel.txt";
@@ -570,6 +630,7 @@ sub check_existance_of_files {
   $delshmclonefile = "$outdir/ClonesSHMDel.txt";
   $bxexptfile = "$outdir/ExptsBX.txt";
 
+  # Check if Mutations summary file can be created and is writable
   $mutfile = "$outdir/Mutations.txt";
 	croak "Error: Output file $exptfile already exists and overwrite switch --ow not set" if (-r $exptfile && ! defined $ow);
 	System("touch $exptfile",1);
@@ -643,9 +704,9 @@ sub parse_command_line {
 sub usage()
 {
 print<<EOF;
-OttDeBruin.pl, by Robin Meyers, 05mar2013
+SHMSanger.pl, by Robin Meyers, 05mar2013
 
-This program analyzes insertions and deletions in NGS amplicon sequence data.
+This program analyzes somatic hypermutation from Sanger sequencing data.
 
 Usage: $0 --metafile FILE (--in FILE | --indir DIR) --outdir DIR
 		[--bcmismatch N] [--blastopt "-opt val"] [--threads N] [--ow]
