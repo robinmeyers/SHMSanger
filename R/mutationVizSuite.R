@@ -42,9 +42,12 @@ subs <- muts[ muts$Type == "sub",]
 
 dels <- muts [ muts$Type == "del",]
 
+# Only include clones with gt 0 bps and a minimum number of substitutions
 cloneIDs <- clones$ID[clones$Bp > 0 & clones$Subs > minsubs]
+# Only include the substitutions from these clones
 subs <- subs[subs$Clone %in% cloneIDs,]
-
+# Only include the deletions from these clones
+dels <- dels[dels$Clone %in% cloneIDs,]
 
 if (tstart == 0) {
   tstart <- 1
