@@ -24,8 +24,8 @@ source_local("SHMHelper.R")
 
 parseArgs("mutationViz.R", ARGS, OPTS)
 
-library(Biostrings)
-library(RColorBrewer)
+suppressPackageStartupMessages(library(Biostrings),quietly=T)
+suppressPackageStartupMessages(library(RColorBrewer),quietly=T)
 basecolors <- getBasecolors()
 bases <- getBases()
 ascii <- getAscii()
@@ -43,7 +43,7 @@ subs <- muts[ muts$Type == "sub",]
 dels <- muts [ muts$Type == "del",]
 
 # Only include clones with gt 0 bps and a minimum number of substitutions
-cloneIDs <- clones$ID[clones$Bp > 0 & clones$Subs > minsubs]
+cloneIDs <- clones$Clone[clones$Bp > 0 & clones$Subs > minsubs]
 # Only include the substitutions from these clones
 subs <- subs[subs$Clone %in% cloneIDs,]
 # Only include the deletions from these clones
@@ -70,7 +70,7 @@ blocks <- data.frame(Clone=integer(),Start=integer(),End=integer())
 
 if (length(cloneIDs) > 0) {
   for (i in 1:length(cloneIDs)) {
-    coordlist <- unlist(strsplit(clones[clones$ID == cloneIDs[i],"Coords"],","))
+    coordlist <- unlist(strsplit(clones[clones$Clone == cloneIDs[i],"Coords"],","))
     for (j in 1:length(coordlist)) {
       coords <- as.integer(unlist(strsplit(coordlist[j],"-")))
       if (j == 1 && coords[1] > 1) {

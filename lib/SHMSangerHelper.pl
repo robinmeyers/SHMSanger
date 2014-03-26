@@ -364,9 +364,9 @@ sub parse_smith_water_file ($$$$) {
 	my ($refid,$refseq) = read_fasta($reffh);
 	$reffh->close;
 
-	$statfh->print(join("\t",qw(ID Bp Subs Dels LargeDel DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
+	$statfh->print(join("\t",qw(Clone Bp Subs Dels LargeDel DelBp Ins InsBp RefA RefC RefG RefT RefN Coords Notes))."\n");
 
-	my @bx_header = ("ID");
+	my @bx_header = ("Clone");
 	foreach my $b1 (@bases) {
 		next if $b1 eq "N";
 		foreach my $b2 (@bases) {

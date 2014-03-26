@@ -1,5 +1,5 @@
 #Useful R subroutines
-library(tools)
+suppressPackageStartupMessages(library(tools,quietly=T))
 
 # first argument is a start and end coordinate pair defining a span
 # second argument is dataframe with Tstart and Tend columns

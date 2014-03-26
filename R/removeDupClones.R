@@ -18,9 +18,9 @@ source_local("Rsub.R")
 
 parseArgs("removeDupClones.R", ARGS, OPTS)
 
-library(gplots)
+suppressPackageStartupMessages(library(gplots,quietly=TRUE))
 
-muts <- read.delim(mutfile,header=F,as.is=T,col.names=c("Expt","ID","Pos","Type","From","To","Size","End","Ins"))
+muts <- read.delim(mutfile,header=F,as.is=T,col.names=c("Expt","Clone","Pos","Type","From","To","Size","End","Ins"))
 clones <- read.delim(clonefile,header=T,as.is=T)
 
 clones$Index <- clones$Subs + clones$DelBp + clones$InsBp
@@ -33,7 +33,7 @@ heat <- matrix(NA,nrow(clones),nrow(clones))
 for (i in 2:nrow(clones)) {
   if (is.na(clones$Index[i]) || clones$Index[i] < 1) next
   clone1 <- clones[i,]
-  muts1 <- muts[muts$ID == clone1$ID,]
+  muts1 <- muts[muts$Clone == clone1$Clone,]
   coords1 <- data.frame(start=integer(),end=integer())
   
   for (x in unlist(strsplit(clone1$Coords,","))) {
@@ -43,7 +43,7 @@ for (i in 2:nrow(clones)) {
   for (j in 1:(i-1)) {
     if (is.na(clones$Index[j]) || clones$Index[j] < 1) next
     clone2 <- clones[j,]
-    muts2 <- muts[muts$ID == clone2$ID,]
+    muts2 <- muts[muts$Clone == clone2$Clone,]
     coords2 <- data.frame(start=integer(),end=integer())
     
     for (x in unlist(strsplit(clone2$Coords,","))) {
@@ -69,7 +69,9 @@ for (i in 2:nrow(clones)) {
       } else if (type == "del") {
         end <- muts2$End[k]
         size <- muts2$Size[k]
-        if (nrow(coords1[ (coords1$start <= pos & coords1$end >= pos) | (coords1$start <= end & coords1$end >= end) ,]) > 0) {
+        #if (nrow(coords1[ (coords1$start <= pos & coords1$end >= pos) & (coords1$start <= end & coords1$end >= end) ,]) > 0) {
+        if (nrow(coords1[ coords1$start <= pos,]) > 0 && nrow(coords1[ coords1$end >= end ,]) > 0) {
+            
           pts_possible <- pts_possible + size
           if (nrow( muts1[ muts1$Type == type & muts1$Pos > pos-2 & muts1$Pos < pos+2 & muts1$End > end-2 & muts1$End < end+2,] ) > 0) {
             pts_awarded <- pts_awarded + size
@@ -90,18 +92,18 @@ for (i in 2:nrow(clones)) {
     if (pts_possible > 0) heat[i,j] <- pts_awarded/pts_possible
 
     if (pts_possible > 0 && pts_awarded/pts_possible >= perc_similar/100) {
-      #cat(clones$ID[i],"is a clone of",clones$ID[j],"with",pts_awarded,"out of",pts_possible,"\n")
-      clones$Dup[i] <- clones$ID[j]
+      #cat(clones$Clone[i],"is a clone of",clones$Clone[j],"with",pts_awarded,"out of",pts_possible,"\n")
+      clones$Dup[i] <- clones$Clone[j]
       clones$Bp[i] <- 0
       break
     } else {
-      #cat(clones$ID[i],"is not a clone of",clones$ID[j],"with",pts_awarded,"out of",pts_possible,"\n")   
+      #cat(clones$Clone[i],"is not a clone of",clones$Clone[j],"with",pts_awarded,"out of",pts_possible,"\n")   
     }
   }
   
   if (clones$Dup[i] != "") {
-    while (clones$Dup[clones$ID==clones$Dup[i]] != "") {
-      clones$Dup[i] <- clones$Dup[clones$ID==clones$Dup[i]]
+    while (clones$Dup[clones$Clone==clones$Dup[i]] != "") {
+      clones$Dup[i] <- clones$Dup[clones$Clone==clones$Dup[i]]
     }
   }
   
@@ -109,13 +111,18 @@ for (i in 2:nrow(clones)) {
 
 clones$Index <- NULL
 
-n.col <- 12
-
-pdf(sub(".txt","_similarity.pdf",clonefile))
-heatmap.2(heat,dendrogram="none",trace="none",Rowv=F,Colv=F,
-  keysize=3,col=colorRampPalette(c("blue","red"))(n.col),
-  breaks=seq(0,1,length.out=n.col+1),na.color=grey(0.5))
-dev.off()
-
 
 write.table(clones,clonefile,quote=F,sep="\t",na="",row.names=F,col.names=T)
+
+n.col <- 12
+
+if (any(!is.na(heat))) {
+
+  pdf(sub(".txt","_similarity.pdf",clonefile))
+  heatmap.2(heat,dendrogram="none",trace="none",Rowv=F,Colv=F,
+    keysize=3,col=colorRampPalette(c("blue","red"))(n.col),
+    breaks=seq(0,1,length.out=n.col+1),na.color=grey(0.5))
+  dev.off()
+}
+
+

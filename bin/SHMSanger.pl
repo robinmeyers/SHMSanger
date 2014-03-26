@@ -207,7 +207,7 @@ sub create_summary {
 
     # Read in each clones base exchange exchange stats
     while (my $clone = $bx_csv->getline_hr($bxfh)) {
-      $bx{$expt}->{$clone->{ID}} = $clone;
+      $bx{$expt}->{$clone->{Clone}} = $clone;
     }
     $bxfh->close;
 
@@ -277,7 +277,7 @@ sub create_summary {
       # Experiment bx stats
       my @tmp1 = @{$bx{$expt}}{@bx_combs};
       # Clone bx stats
-      my @tmp2 = @{$bx{$expt}->{$clone->{ID}}}{@bx_combs};
+      my @tmp2 = @{$bx{$expt}->{$clone->{Clone}}}{@bx_combs};
 
       our ($a,$b);
 
@@ -287,7 +287,7 @@ sub create_summary {
 
       # Print clones stats to Clone summary file
       $clonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
-                                $clone->{ID},
+                                $clone->{Clone},
                                 $clone->{Bp},
                                 $clone->{Subs},
                                 $clone->{Dels},
@@ -320,7 +320,7 @@ sub create_summary {
       $stats{$expt}->{SHMRefN} += $clone->{RefN};
       # Print clone stats to clone Level 2 summary stats
       $shmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
-                                $clone->{ID},
+                                $clone->{Clone},
                                 $clone->{Bp},
                                 $clone->{Subs},
                                 $clone->{Dels},
@@ -352,7 +352,7 @@ sub create_summary {
       $stats{$expt}->{DelSHMRefN} += $clone->{RefN};
       # Pring clone stats to clone Level 3 summary stats
       $delshmclonesfh->print(join("\t",$expt,$meta_hash{$expt}->{allele},
-                                $clone->{ID},
+                                $clone->{Clone},
                                 $clone->{Bp},
                                 $clone->{Subs},
                                 $clone->{Dels},

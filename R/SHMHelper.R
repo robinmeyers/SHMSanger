@@ -66,6 +66,56 @@ tictactoePlot <- function (subs, dels, blocks, ref, tstart, tend, plotrows, clon
   
 }
 
+calculateBlocks <- function(clones,tstart,tend) {
+  blocks <- data.frame(Clone=character(),Start=integer(),End=integer(),stringsAsFactors=F)
+
+  if (nrow(clones) > 0) {
+    for (i in 1:nrow(clones)) {
+      coordlist <- unlist(strsplit(clones[i,"Coords"],","))
+      
+      for (j in 1:length(coordlist)) {
+        coords <- as.integer(unlist(strsplit(coordlist[j],"-")))
+        if (j == 1 && coords[1] > tstart) {
+          blocks[nrow(blocks)+1,] <- c(clones[i,"Clone"],tstart,coords[1]-1)
+        }
+        if (j > 1) {
+          coordslast <- as.integer(unlist(strsplit(coordlist[j-1],"-")))
+          blocks[nrow(blocks)+1,] <- c(clones[i,"Clone"],coordslast[2]+1,coords[1]-1)
+        }
+        if (j == length(coordlist) && coords[2] < tend) {
+          blocks[nrow(blocks)+1,] <- c(clones[i,"Clone"],coords[2]+1,tend)
+        }
+      }
+      
+    }
+  }
+  blocks$Start <- as.integer(blocks$Start)
+  blocks$End <- as.integer(blocks$End)
+  return(blocks)
+}
+
+calculateProfile <- function (subs, clones, refseq, tstart, tend) {
+  
+  blocks <- calculateBlocks(clones,tstart,tend)
+  profile <- data.frame(Pos=tstart:tend,Base=strsplit(substr(as.character(refseq),tstart,tend),""))
+  colnames(profile) <- c("Pos","Base")
+  profile$Clones <- 0
+  profile$Subs <- 0
+  profile$Y <- 0
+
+  if (nrow(subs) > 0) {
+    profile$Subs <- hist(subs$Pos,breaks=seq(tstart-0.5,tend+0.5,by=1),plot=F)$counts
+  }
+
+  profile$Clones <- nrow(clones) - unlist(lapply(tstart:tend,function(x) {
+      return(nrow(blocks[blocks$Start <= x & blocks$End >= x,]))
+    }))
+
+  profile$Y <- ifelse(profile$Clones == 0, 0, profile$Subs/profile$Clones)
+
+  return(profile)
+}
+
 connectfourSubPlot <- function (subs, blocks, ref, tstart, tend, plotrows, cloneIDs) {
   
   bases <- getBases()

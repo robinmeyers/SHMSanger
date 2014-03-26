@@ -26,8 +26,8 @@ source_local("SHMHelper.R")
 parseArgs("mutationVizGrouped.R", ARGS, OPTS)
 
 
-library(Biostrings)
-library(RColorBrewer)
+suppressPackageStartupMessages(library(Biostrings,quietly=T))
+suppressPackageStartupMessages(library(RColorBrewer,quietly=T))
 basecolors <- getBasecolors()
 bases <- getBases()
 ascii <- getAscii()
