@@ -49,18 +49,20 @@ tends <- tstarts+rowwidth-1
 
 plotline <- data.frame(x=c(data$Pos-0.49,data$Pos+0.49),y=c(data$Y,data$Y))
 plotline <- plotline[order(plotline$x),]
-if (ymax==0) { ymax <- 1.1*max(plotline$y[tstart:tend]) }
-
+if (ymax==0) { ymax <- 1.1*max(plotline$y[plotline$x >= tstart & plotline$x <= tend]) }
 refy <- -ymax/20
 
-#   Bottom of the plot - below the sequence  
-rgyw_bottoms <- 2*refy
-agct_bottoms <- 2*refy
+if (rgyw[1] > 0) {
+  rgyw_bottoms <- 2*refy
+  rgyw_tops <- unlist(lapply(rgyw,function(x,y) { max(y[x:(x+3)]) }, data$Y)) + 0.025*ymax
+}
+if (agct[1] > 0) {
+  agct_bottoms <- 2*refy
+  agct_tops <- unlist(lapply(agct,function(x,y) { max(y[x:(x+3)]) }, data$Y)) + 0.025*ymax
+}
 
 
-#   Adjust to height of the peak
-rgyw_tops <- unlist(lapply(rgyw,function(x,y) { max(y[x:(x+3)]) }, data$Y)) + 0.025*ymax
-agct_tops <- unlist(lapply(agct,function(x,y) { max(y[x:(x+3)]) }, data$Y)) + 0.025*ymax
+
 
 pdf(output,height=8,width=11)
 
@@ -70,8 +72,8 @@ pdf(output,height=8,width=11)
   for (i in 1:plotrows) {
     plot(c(),c(),ylab="",xaxt="n",xlab="",xlim=c(max(1,tstarts[i]-2),min(nchar(refseq),tends[i]+2)),ylim=c(refy,ymax),xaxs="i",bty="o")
     axis(1,lwd=0,lwd.ticks=1)
-    rect(xleft=rgyw-0.5,ybottom=rgyw_bottoms,xright=rgyw+3.5,ytop=rgyw_tops,col=rgb(254,217,142,max=255),border=rgb(254,217,142,max=255),lwd=2)
-    rect(xleft=agct-0.5,ybottom=agct_bottoms,xright=agct+3.5,ytop=agct_tops,col=rgb(254,153,41,max=255),border=rgb(254,153,41,max=255),lwd=2)
+    if (rgyw[1] > 0) rect(xleft=rgyw-0.5,ybottom=rgyw_bottoms,xright=rgyw+3.5,ytop=rgyw_tops,col=rgb(254,217,142,max=255),border=rgb(254,217,142,max=255),lwd=2)
+    if (agct[1] > 0) rect(xleft=agct-0.5,ybottom=agct_bottoms,xright=agct+3.5,ytop=agct_tops,col=rgb(254,153,41,max=255),border=rgb(254,153,41,max=255),lwd=2)
     
     if ("Err" %in% colnames(data)) {
 
