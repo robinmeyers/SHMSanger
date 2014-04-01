@@ -60,7 +60,12 @@ if (tend == 0) {
 subs <- subs[subs$Pos <= tend,]
 subs <- subs[subs$Pos >= tstart,]
 
+
 subtable <- table(subs$Clone)
+emptyclones <- rep(0,nrow(clones[! clones$Clone %in% names(subtable), ]))
+names(emptyclones) <- clones[! clones$Clone %in% names(subtable), "Clone"]
+subtable <- c(subtable,emptyclones)
+
 
 if (rmdups) {
   clones <- clones[ clones$Bp > 0, ]
@@ -70,10 +75,12 @@ if (rmdups) {
 
 if (minsubs > 0) {
   subs <- subs[ subtable[subs$Clone] >= minsubs, ]
+  clones <- clones[ subtable[clones$Clone] >= minsubs, ]
 }
 
 if (maxsubs > 0) {
   subs <- subs[ subtable[subs$Clone] <= maxsubs, ]
+  clones <- clones[ subtable[clones$Clone] <= maxsubs, ]
 }
 
 
