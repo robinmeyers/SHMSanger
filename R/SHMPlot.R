@@ -8,7 +8,9 @@ OPTS <- c(
   "tstart","numeric",0,"Start of reference to view",
   "tend","numeric",0,"End of reference to view",
   "plotrows","numeric",4,"Rows on plot",
-  "ymax","numeric",0,"Maximum y-axis height"
+  "ymax","numeric",0,"Maximum y-axis height",
+  "figureheight","numeric",8,"height in inches",
+  "showsequence","logical",TRUE,"display sequence on plots"
 )
 
 source_local <- function(fname){
@@ -84,7 +86,7 @@ if (agct_match[1] > 0) {
 
 
 
-pdf(output,height=8,width=11)
+pdf(output,height=figureheight,width=11)
 
   par(mai=c(0.2,0.75,0.2,0.75),omi=c(0.5,0,0,0))
   layout(as.matrix(1:plotrows,ncol=1,nrow=plotrows))
@@ -108,7 +110,7 @@ pdf(output,height=8,width=11)
 
 
     grid(col=grey(0.5))
-    points(data$Pos[1]:tail(data$Pos,n=1),rep(refy,nrow(data)),col=basecolors[data$Style],pch=ascii[data$Style],cex=0.6)
+    if (showsequence) points(data$Pos[1]:tail(data$Pos,n=1),rep(refy,nrow(data)),col=basecolors[data$Style],pch=ascii[data$Style],cex=0.6)
     lines(plotline$x,plotline$y)
   }
 
